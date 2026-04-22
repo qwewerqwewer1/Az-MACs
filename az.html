@@ -1,0 +1,1752 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>IT Реестр</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Unbounded:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --green: #42b883;
+        --green-dim: rgba(66, 184, 131, 0.12);
+        --navy: #141826;
+        --navy2: #1a1f35;
+        --card: #1e2438;
+        --card2: #232a42;
+        --border: rgba(66, 184, 131, 0.15);
+        --border2: rgba(255, 255, 255, 0.07);
+        --text: #e8eaf0;
+        --muted: #6b7494;
+        --accent: #f0c060;
+        --danger: #e05555;
+        --radius: 12px;
+        --radius-sm: 8px;
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: var(--navy);
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        min-height: 100vh;
+        background-image:
+          radial-gradient(
+            ellipse 70% 50% at 85% 5%,
+            rgba(66, 184, 131, 0.06) 0%,
+            transparent 70%
+          ),
+          radial-gradient(
+            ellipse 50% 40% at 5% 90%,
+            rgba(66, 184, 131, 0.04) 0%,
+            transparent 60%
+          );
+      }
+      #app {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      /* APPBAR */
+      .appbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 0 28px;
+        height: 56px;
+        background: rgba(20, 24, 38, 0.9);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .appbar__logo {
+        font-family: "Unbounded", sans-serif;
+        font-weight: 900;
+        font-size: 1.1rem;
+        letter-spacing: -1px;
+        background: linear-gradient(
+          135deg,
+          var(--green) 0%,
+          #a8ffcf 60%,
+          var(--accent) 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .appbar__sep {
+        flex: 1;
+      }
+      .appbar__count {
+        font-size: 0.7rem;
+        color: var(--muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      /* STATS */
+      .stats-bar {
+        display: flex;
+        background: var(--navy2);
+        border-bottom: 1px solid var(--border2);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .stats-bar::-webkit-scrollbar {
+        display: none;
+      }
+      .stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 28px;
+        border-right: 1px solid var(--border2);
+        flex-shrink: 0;
+      }
+      .stat__val {
+        font-family: "Unbounded", sans-serif;
+        font-size: 1.15rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .stat__val--warn {
+        color: var(--accent);
+      }
+      .stat__label {
+        font-size: 0.58rem;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-top: 4px;
+      }
+
+      /* TOOLBAR */
+      .toolbar {
+        padding: 12px 28px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        border-bottom: 1px solid var(--border2);
+        background: var(--navy2);
+      }
+      .toolbar__search {
+        flex: 1;
+        min-width: 220px;
+        position: relative;
+      }
+      .toolbar__search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        pointer-events: none;
+      }
+      .input {
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 0.82rem;
+        padding: 9px 12px 9px 34px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .input:focus {
+        border-color: var(--green);
+      }
+      .input::placeholder {
+        color: var(--muted);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: inherit;
+        font-size: 0.75rem;
+        padding: 8px 16px;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .btn--outline {
+        background: transparent;
+        border-color: var(--border);
+        color: var(--muted);
+      }
+      .btn--outline:hover {
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .btn--outline:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      .btn--primary {
+        background: var(--green);
+        color: #0d1a12;
+        font-weight: 700;
+        border-color: var(--green);
+      }
+      .btn--primary:hover {
+        background: #55d49a;
+      }
+      .btn--ghost {
+        background: transparent;
+        border-color: var(--border2);
+        color: var(--muted);
+      }
+      .btn--ghost:hover {
+        border-color: var(--muted);
+        color: var(--text);
+      }
+      .btn--danger {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: #fff;
+        font-weight: 700;
+      }
+      .btn--danger:hover {
+        background: #f06060;
+      }
+      .btn--icon {
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        cursor: pointer;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+      .btn--icon:hover {
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--text);
+      }
+
+      /* DEPT FILTERS */
+      .dept-filters {
+        padding: 10px 28px;
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        align-items: center;
+        border-bottom: 1px solid var(--border2);
+        background: var(--navy);
+      }
+      .dept-filters__label {
+        font-size: 0.62rem;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-right: 2px;
+        flex-shrink: 0;
+      }
+      .dept-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.65rem;
+        padding: 3px 10px;
+        border-radius: 99px;
+        cursor: pointer;
+        border: 1px solid var(--border2);
+        background: var(--card);
+        color: var(--muted);
+        font-family: inherit;
+        transition: all 0.15s;
+      }
+      .dept-chip:hover {
+        border-color: var(--dept-color, var(--green));
+        color: var(--text);
+      }
+      .dept-chip--active {
+        background: var(--card2);
+        border-color: var(--dept-color, var(--green));
+        color: var(--text);
+      }
+      .dept-chip__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--dept-color, var(--green));
+        flex-shrink: 0;
+      }
+
+      /* SORT / VIEW BAR */
+      .sort-bar {
+        padding: 8px 28px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        border-bottom: 1px solid var(--border2);
+        flex-wrap: wrap;
+      }
+      .sort-bar__label {
+        font-size: 0.6rem;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        margin-right: 2px;
+      }
+      .sort-btn {
+        font-family: inherit;
+        font-size: 0.67rem;
+        padding: 3px 9px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid var(--border2);
+        background: transparent;
+        color: var(--muted);
+        transition: all 0.15s;
+      }
+      .sort-btn:hover {
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .sort-btn--active {
+        border-color: var(--green);
+        color: var(--green);
+        background: var(--green-dim);
+      }
+      .sort-bar__sep {
+        flex: 1;
+      }
+      .view-btns {
+        display: flex;
+        gap: 4px;
+      }
+      .view-btn {
+        font-size: 1rem;
+        width: 30px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid var(--border2);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .view-btn:hover {
+        border-color: var(--green);
+        color: var(--green);
+      }
+      .view-btn--active {
+        border-color: var(--green);
+        color: var(--green);
+        background: var(--green-dim);
+      }
+
+      /* MAIN */
+      .main {
+        flex: 1;
+        padding: 24px 28px;
+      }
+
+      /* EMPTY */
+      .empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 80px 20px;
+        color: var(--muted);
+        text-align: center;
+      }
+      .empty__icon {
+        font-size: 2.5rem;
+        opacity: 0.3;
+      }
+      .empty__title {
+        font-family: "Unbounded", sans-serif;
+        font-size: 0.9rem;
+      }
+      .empty__hint {
+        font-size: 0.72rem;
+        letter-spacing: 1px;
+        opacity: 0.7;
+      }
+
+      /* DEPT GROUP */
+      .dept-group {
+        margin-bottom: 32px;
+      }
+      .dept-group__header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .dept-group__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--dept-color, var(--green));
+        flex-shrink: 0;
+        box-shadow: 0 0 8px var(--dept-color, var(--green));
+      }
+      .dept-group__name {
+        font-family: "Unbounded", sans-serif;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--dept-color, var(--green));
+      }
+      .dept-group__count {
+        font-size: 0.65rem;
+        color: var(--muted);
+        background: var(--card);
+        border: 1px solid var(--border2);
+        padding: 2px 8px;
+        border-radius: 99px;
+      }
+      .dept-group__line {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          var(--dept-color, var(--green)) 0%,
+          transparent 100%
+        );
+        opacity: 0.2;
+      }
+
+      /* CARD GRID */
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 12px;
+      }
+
+      /* USER CARD */
+      .user-card {
+        background: var(--card);
+        border: 1px solid var(--border2);
+        border-radius: var(--radius);
+        padding: 14px;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+      .user-card:hover {
+        border-color: rgba(66, 184, 131, 0.35);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+      .user-card__head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        background: var(--green-dim);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Unbounded", sans-serif;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--green);
+        flex-shrink: 0;
+      }
+      .user-card__name {
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1.3;
+      }
+      .user-card__login {
+        font-size: 0.68rem;
+        color: var(--muted);
+        margin-top: 1px;
+      }
+      .user-card__chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .user-card__soft {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-top: 7px;
+      }
+
+      /* SOFT PILLS */
+      .soft-pill {
+        font-size: 0.58rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(66, 184, 131, 0.1);
+        border: 1px solid rgba(66, 184, 131, 0.2);
+        color: var(--green);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      /* CHIPS */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.65rem;
+        border-radius: 6px;
+        padding: 3px 8px;
+        letter-spacing: 0.3px;
+      }
+      .chip--ip {
+        background: var(--green-dim);
+        border: 1px solid rgba(66, 184, 131, 0.25);
+        color: var(--green);
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+        user-select: none;
+      }
+      .chip--ip:hover {
+        background: rgba(66, 184, 131, 0.2);
+        border-color: rgba(66, 184, 131, 0.5);
+      }
+      .chip--ip.copied {
+        background: rgba(66, 184, 131, 0.25);
+        border-color: var(--green);
+      }
+      .chip--mac {
+        background: rgba(240, 192, 96, 0.08);
+        border: 1px solid rgba(240, 192, 96, 0.22);
+        color: var(--accent);
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+        user-select: none;
+      }
+      .chip--mac:hover {
+        background: rgba(240, 192, 96, 0.16);
+        border-color: rgba(240, 192, 96, 0.5);
+      }
+      .chip--mac.copied {
+        background: rgba(240, 192, 96, 0.22);
+        border-color: var(--accent);
+      }
+      .chip__icon {
+        font-style: normal;
+        font-size: 0.68rem;
+        min-width: 10px;
+      }
+      .chip--secondary {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border2);
+        color: var(--muted);
+      }
+
+      /* MAC DROPDOWN */
+      .mac-drop {
+        position: fixed;
+        z-index: 999;
+        background: var(--card2);
+        border: 1px solid rgba(240, 192, 96, 0.35);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+        min-width: 240px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-4px);
+        transition:
+          opacity 0.12s ease,
+          transform 0.12s ease;
+      }
+      .mac-drop--visible {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+      .mac-drop__row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        cursor: pointer;
+        transition: background 0.12s;
+        border-bottom: 1px solid var(--border2);
+      }
+      .mac-drop__row:last-child {
+        border-bottom: none;
+      }
+      .mac-drop__row:hover {
+        background: rgba(240, 192, 96, 0.08);
+      }
+      .mac-drop__row--copied {
+        background: rgba(240, 192, 96, 0.12);
+      }
+      .mac-drop__label {
+        font-size: 0.62rem;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        min-width: 52px;
+      }
+      .mac-drop__val {
+        font-size: 0.78rem;
+        color: var(--accent);
+        flex: 1;
+      }
+      .mac-drop__check {
+        color: var(--green);
+        font-size: 0.8rem;
+        width: 16px;
+        text-align: right;
+      }
+
+      /* TABLE */
+      .table-wrap {
+        overflow-x: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--border2);
+      }
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.78rem;
+      }
+      .data-table th {
+        background: var(--card2);
+        color: var(--muted);
+        font-size: 0.6rem;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        padding: 10px 14px;
+        text-align: left;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--border2);
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.15s;
+      }
+      .data-table th:hover {
+        color: var(--green);
+      }
+      .data-table th.sort-asc::after {
+        content: " ↑";
+        color: var(--green);
+      }
+      .data-table th.sort-desc::after {
+        content: " ↓";
+        color: var(--green);
+      }
+      .data-table td {
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--border2);
+        vertical-align: middle;
+      }
+      .data-table tr:last-child td {
+        border-bottom: none;
+      }
+      .data-table tr:hover td {
+        background: rgba(255, 255, 255, 0.02);
+        cursor: pointer;
+      }
+      .td-name {
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .td-muted {
+        color: var(--muted);
+        white-space: nowrap;
+        font-size: 0.75rem;
+      }
+
+      /* DIALOG */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        background: rgba(10, 13, 24, 0.75);
+        backdrop-filter: blur(6px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        animation: fadeIn 0.15s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .dialog {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        width: 100%;
+        max-width: 640px;
+        height: 520px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow);
+        animation: slideUp 0.18s ease;
+      }
+      @keyframes slideUp {
+        from {
+          transform: translateY(16px);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .dialog__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 24px 0;
+      }
+      .dialog__title {
+        font-family: "Unbounded", sans-serif;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+      .tabs {
+        display: flex;
+        padding: 12px 24px 0;
+        border-bottom: 1px solid var(--border2);
+      }
+      .tab {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-family: inherit;
+        font-size: 0.73rem;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 8px 14px;
+        margin-bottom: -1px;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
+      }
+      .tab:hover {
+        color: var(--text);
+      }
+      .tab--active {
+        color: var(--green);
+        border-bottom-color: var(--green);
+      }
+      .dialog__body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 18px 24px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 18px;
+      }
+      .form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .form-label {
+        font-size: 0.62rem;
+        color: var(--muted);
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+      .form-input {
+        background: var(--navy2);
+        border: 1px solid var(--border2);
+        border-radius: var(--radius-sm);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 0.8rem;
+        padding: 7px 10px;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .form-input:focus {
+        border-color: var(--green);
+      }
+      .dialog__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 14px 24px;
+        border-top: 1px solid var(--border2);
+      }
+
+      /* CHECKBOXES */
+      .soft-checks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 4px 0 14px;
+      }
+      .soft-check {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 7px;
+        border: 1px solid var(--border2);
+        background: var(--navy2);
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+        user-select: none;
+      }
+      .soft-check:hover {
+        border-color: var(--border);
+        background: var(--card2);
+      }
+      .soft-check--on {
+        border-color: var(--green);
+        background: var(--green-dim);
+      }
+      .soft-check__box {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        border: 1.5px solid var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        color: transparent;
+        transition: all 0.15s;
+        flex-shrink: 0;
+      }
+      .soft-check--on .soft-check__box {
+        background: var(--green);
+        border-color: var(--green);
+        color: #0d1a12;
+      }
+      .soft-check__label {
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+      .soft-check--on .soft-check__label {
+        color: var(--text);
+      }
+
+      /* CONFIRM */
+      .confirm-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        background: rgba(10, 13, 24, 0.8);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.15s ease;
+      }
+      .confirm-box {
+        background: var(--card);
+        border: 1px solid rgba(224, 85, 85, 0.35);
+        border-radius: 14px;
+        padding: 28px 32px;
+        max-width: 360px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+        animation: slideUp 0.18s ease;
+      }
+      .confirm-box__icon {
+        font-size: 2rem;
+        margin-bottom: 12px;
+      }
+      .confirm-box__title {
+        font-family: "Unbounded", sans-serif;
+        font-size: 0.85rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .confirm-box__text {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-bottom: 24px;
+        line-height: 1.6;
+      }
+      .confirm-box__actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      /* TOAST */
+      .toast {
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--card2);
+        border: 1px solid var(--green);
+        color: var(--green);
+        border-radius: 99px;
+        padding: 9px 22px;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 20px rgba(66, 184, 131, 0.2);
+        z-index: 9999;
+        pointer-events: none;
+        animation: toastIn 0.2s ease;
+      }
+      @keyframes toastIn {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border2);
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      const { createApp, ref, computed, watch } = Vue;
+
+      const FIELDS = [
+        "Наклейка ДИТ",
+        "Доменное имя",
+        "MAC адрес",
+        "IP адрес",
+        "Локация",
+        "Здание, кабинет",
+        "Департамент",
+        "ФИО пользователя",
+        "Логин пользователя",
+        "Версия Windows",
+        "Ключ Windows",
+        "Версия Office",
+        "Ключ Office",
+        "1С",
+        "Е1",
+        "Content Reader",
+        "Acrobat",
+        "Характеристика",
+        "Партийный номер",
+        "Серийный номер",
+        "Монитор",
+        "Монитор 2",
+        "IP-телефон",
+        "Другое оборудование",
+        "Примечание",
+        "Обновление WIN7",
+      ];
+      const CHECKBOX_FIELDS = [
+        "1С",
+        "Е1",
+        "Content Reader",
+        "Acrobat",
+        "Обновление WIN7",
+      ];
+      const SOFT_INDICATORS = ["1С", "Е1", "Content Reader", "Acrobat"];
+      const DEPT_PALETTE = [
+        "#42b883",
+        "#7B1FA2",
+        "#00897B",
+        "#43A047",
+        "#F9A825",
+        "#E64A19",
+        "#C2185B",
+        "#5E35B1",
+        "#0097A7",
+        "#558B2F",
+        "#F57C00",
+        "#D32F2F",
+        "#455A64",
+        "#795548",
+      ];
+      const UNASSIGNED = "— Без отдела";
+      const TAB_GROUPS = [
+        {
+          id: "user",
+          label: "Пользователь",
+          fields: [
+            "ФИО пользователя",
+            "Логин пользователя",
+            "Локация",
+            "Здание, кабинет",
+            "Департамент",
+          ],
+        },
+        {
+          id: "pc",
+          label: "Компьютер",
+          fields: [
+            "Наклейка ДИТ",
+            "Доменное имя",
+            "MAC адрес",
+            "IP адрес",
+            "Характеристика",
+            "Партийный номер",
+            "Серийный номер",
+            "Монитор",
+            "Монитор 2",
+          ],
+        },
+        {
+          id: "soft",
+          label: "ПО и железо",
+          fields: [
+            "Версия Windows",
+            "Ключ Windows",
+            "Версия Office",
+            "Ключ Office",
+            "1С",
+            "Е1",
+            "Content Reader",
+            "Acrobat",
+            "IP-телефон",
+            "Другое оборудование",
+            "Примечание",
+            "Обновление WIN7",
+          ],
+        },
+      ];
+      const LS_KEY = "it_registry_v1";
+
+      function hashStr(s) {
+        let h = 0;
+        for (let i = 0; i < s.length; i++)
+          h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        return Math.abs(h);
+      }
+      function findKey(row, field) {
+        const n = field.trim().toLowerCase();
+        return (
+          Object.keys(row).find((k) => k.trim().toLowerCase() === n) || null
+        );
+      }
+      function normalizeMac(s) {
+        return (s || "")
+          .toLowerCase()
+          .replace(/[:\-\.]/g, "")
+          .replace(/\s/g, "");
+      }
+      function macFormats(raw) {
+        const c = normalizeMac(raw);
+        if (c.length !== 12) return null;
+        const b = c.match(/.{2}/g);
+        return {
+          colon: b.join(":").toUpperCase(),
+          hyphen: b.join("-").toUpperCase(),
+          cisco: [
+            b.slice(0, 2).join(""),
+            b.slice(2, 4).join(""),
+            b.slice(4, 6).join(""),
+          ]
+            .join(".")
+            .toUpperCase(),
+        };
+      }
+      function isOn(v) {
+        return ["да", "yes", "1", "true", "+"].includes(
+          (v || "").trim().toLowerCase(),
+        );
+      }
+      function copyText(text) {
+        if (navigator.clipboard?.writeText)
+          navigator.clipboard.writeText(text).catch(() => {});
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.cssText = "position:fixed;left:-9999px;top:-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      function parseExcel(file) {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onerror = () => reject(r.error);
+          r.onload = (e) => {
+            try {
+              const wb = XLSX.read(e.target.result, { type: "array" });
+              const rows = XLSX.utils.sheet_to_json(
+                wb.Sheets[wb.SheetNames[0]],
+                { defval: "" },
+              );
+              resolve(
+                rows.map((row) => {
+                  const o = {};
+                  FIELDS.forEach((f) => {
+                    const k = findKey(row, f);
+                    o[f] = k ? String(row[k] ?? "") : "";
+                  });
+                  return o;
+                }),
+              );
+            } catch (err) {
+              reject(err);
+            }
+          };
+          r.readAsArrayBuffer(file);
+        });
+      }
+
+      // ── EditDialog ──
+      const EditDialog = {
+        props: { user: Object, tabGroups: Array, checkboxFields: Array },
+        emits: ["close", "delete"],
+        data: () => ({ activeTab: 0 }),
+        watch: {
+          user() {
+            this.activeTab = 0;
+          },
+        },
+        computed: {
+          cbSet() {
+            return new Set(this.checkboxFields || []);
+          },
+        },
+        methods: {
+          isOn(f) {
+            return isOn(this.user[f]);
+          },
+          toggle(f) {
+            this.user[f] = this.isOn(f) ? "" : "+";
+          },
+        },
+        template: `
+    <div v-if="user" class="overlay" @click.self="$emit('close')">
+      <div class="dialog">
+        <div class="dialog__head">
+          <span class="dialog__title">Карточка записи</span>
+          <button class="btn--icon" style="width:32px;height:32px;font-size:1.2rem" @click="$emit('close')">×</button>
+        </div>
+        <div class="tabs">
+          <button v-for="(tab,i) in tabGroups" :key="tab.id" class="tab"
+            :class="{'tab--active':activeTab===i}" @click="activeTab=i">{{ tab.label }}</button>
+        </div>
+        <div class="dialog__body">
+          <div v-for="(tab,i) in tabGroups" :key="tab.id" v-show="activeTab===i">
+            <div v-if="tab.fields.some(f=>cbSet.has(f))" class="soft-checks">
+              <div v-for="f in tab.fields.filter(f=>cbSet.has(f))" :key="f"
+                class="soft-check" :class="{'soft-check--on':isOn(f)}" @click="toggle(f)">
+                <span class="soft-check__box">{{ isOn(f)?'✓':'' }}</span>
+                <span class="soft-check__label">{{ f }}</span>
+              </div>
+            </div>
+            <div class="form-grid">
+              <div v-for="f in tab.fields.filter(f=>!cbSet.has(f))" :key="f" class="form-field">
+                <label class="form-label">{{ f }}</label>
+                <input v-model="user[f]" class="form-input" type="text" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="dialog__actions">
+          <button class="btn btn--danger" style="margin-right:auto" @click="$emit('delete',user)">🗑 Удалить</button>
+          <button class="btn btn--ghost" @click="$emit('close')">Отмена</button>
+          <button class="btn btn--primary" @click="$emit('close')">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  `,
+      };
+
+      // ── App ──
+      const App = {
+        components: { EditDialog },
+        setup() {
+          const isExcelLoaded = ref(false);
+          const data = ref([]);
+          const idCounter = ref(1);
+          const query = ref("");
+          const editedUser = ref(null);
+          const toast = ref("");
+          const copiedIp = ref("");
+          const deleteConfirm = ref(null);
+          const activeDept = ref(null);
+          const viewMode = ref("grid");
+          const sortKey = ref("ФИО пользователя");
+          const sortDir = ref(1);
+          const macDrop = ref(null);
+          let toastTimer = null,
+            ipTimer = null,
+            macTimer = null,
+            macShowTimer = null;
+
+          // // localStorage
+          // function saveLS() {
+          //   try {
+          //     localStorage.setItem(
+          //       LS_KEY,
+          //       JSON.stringify({
+          //         data: data.value,
+          //         idCounter: idCounter.value,
+          //       }),
+          //     );
+          //   } catch (_) {}
+          // }
+          // (function loadLS() {
+          //   try {
+          //     const raw = localStorage.getItem(LS_KEY);
+          //     if (!raw) return;
+          //     const p = JSON.parse(raw);
+          //     if (p.data?.length) {
+          //       data.value = p.data;
+          //       idCounter.value = p.idCounter || p.data.length + 1;
+          //     }
+          //   } catch (_) {}
+          // })();
+          // watch(data, saveLS, { deep: true });
+
+          // computed
+          const filtered = computed(() => {
+            const q = query.value.toLowerCase().trim();
+            const qm = normalizeMac(q);
+            let list = data.value;
+            if (q)
+              list = list.filter((u) => {
+                const t = [
+                  "ФИО пользователя",
+                  "Логин пользователя",
+                  "IP адрес",
+                ].some((k) => (u[k] || "").toLowerCase().includes(q));
+                const m =
+                  normalizeMac(u["MAC адрес"]).includes(qm) && qm.length >= 2;
+                return t || m;
+              });
+            if (activeDept.value)
+              list = list.filter(
+                (u) =>
+                  ((u["Департамент"] || "").trim() || UNASSIGNED) ===
+                  activeDept.value,
+              );
+            return [...list].sort((a, b) => {
+              const av = (a[sortKey.value] || "").toLowerCase();
+              const bv = (b[sortKey.value] || "").toLowerCase();
+              return av < bv ? -sortDir.value : av > bv ? sortDir.value : 0;
+            });
+          });
+
+          const allDepts = computed(() => {
+            const map = new Map();
+            data.value.forEach((u) => {
+              const d = (u["Департамент"] || "").trim() || UNASSIGNED;
+              if (!map.has(d))
+                map.set(d, DEPT_PALETTE[hashStr(d) % DEPT_PALETTE.length]);
+            });
+            return Array.from(map.entries())
+              .map(([name, color]) => ({ name, color }))
+              .sort((a, b) =>
+                a.name === UNASSIGNED
+                  ? 1
+                  : b.name === UNASSIGNED
+                    ? -1
+                    : a.name.localeCompare(b.name, "ru"),
+              );
+          });
+
+          const groups = computed(() => {
+            const map = new Map();
+            filtered.value.forEach((u) => {
+              const d = (u["Департамент"] || "").trim() || UNASSIGNED;
+              if (!map.has(d)) map.set(d, []);
+              map.get(d).push(u);
+            });
+            return Array.from(map.entries())
+              .map(([dept, users]) => ({
+                dept,
+                users,
+                color: DEPT_PALETTE[hashStr(dept) % DEPT_PALETTE.length],
+              }))
+              .sort((a, b) =>
+                a.dept === UNASSIGNED
+                  ? 1
+                  : b.dept === UNASSIGNED
+                    ? -1
+                    : a.dept.localeCompare(b.dept, "ru"),
+              );
+          });
+
+          const stats = computed(() => ({
+            total: data.value.length,
+            depts: new Set(
+              data.value
+                .map((u) => (u["Департамент"] || "").trim())
+                .filter(Boolean),
+            ).size,
+            noIp: data.value.filter((u) => !u["IP адрес"]).length,
+            noMac: data.value.filter(
+              (u) => !normalizeMac(u["MAC адрес"]).length,
+            ).length,
+          }));
+
+          function showToast(msg) {
+            toast.value = msg;
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+              toast.value = "";
+            }, 2000);
+          }
+
+          function copyIP(ip) {
+            const v = String(ip || "").trim();
+            if (!v) return;
+            copyText(v);
+            copiedIp.value = v;
+            if (ipTimer) clearTimeout(ipTimer);
+            ipTimer = setTimeout(() => {
+              copiedIp.value = "";
+            }, 1800);
+            showToast("✓ IP скопирован");
+          }
+
+          function openMacDrop(e, raw, userId) {
+            e.stopPropagation();
+            const fmt = macFormats(raw);
+            if (!fmt) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const dW = 245,
+              dH = 114;
+            let left = rect.left;
+            if (left + dW > window.innerWidth - 8)
+              left = window.innerWidth - dW - 8;
+            const top =
+              rect.bottom + dH + 8 > window.innerHeight
+                ? rect.top - dH - 4
+                : rect.bottom + 4;
+            macDrop.value = {
+              formats: fmt,
+              userId,
+              copiedKey: null,
+              top,
+              left,
+              visible: false,
+            };
+            if (macShowTimer) clearTimeout(macShowTimer);
+            macShowTimer = setTimeout(() => {
+              if (macDrop.value)
+                macDrop.value = { ...macDrop.value, visible: true };
+            }, 10);
+            if (macTimer) clearTimeout(macTimer);
+            macTimer = setTimeout(() => {
+              macDrop.value = null;
+            }, 4000);
+          }
+
+          function copyMacFmt(e, key) {
+            e.stopPropagation();
+            if (!macDrop.value) return;
+            copyText(macDrop.value.formats[key]);
+            macDrop.value = { ...macDrop.value, copiedKey: key };
+            if (macTimer) clearTimeout(macTimer);
+            macTimer = setTimeout(() => {
+              macDrop.value = null;
+            }, 1500);
+            showToast("✓ MAC скопирован");
+          }
+          document.addEventListener("click", () => {
+            macDrop.value = null;
+          });
+
+          function openEdit(u) {
+            editedUser.value = u;
+          }
+          function closeEdit() {
+            editedUser.value = null;
+          }
+
+          function addUser() {
+            const u = { id: idCounter.value++ };
+            FIELDS.forEach((f) => {
+              u[f] = "";
+            });
+            data.value.push(u);
+            openEdit(u);
+          }
+
+          function onDeleteFromDialog(u) {
+            closeEdit();
+            deleteConfirm.value = { user: u };
+          }
+          function askDelete(e, u) {
+            e.stopPropagation();
+            deleteConfirm.value = { user: u };
+          }
+          function cancelDelete() {
+            deleteConfirm.value = null;
+          }
+          function confirmDelete() {
+            if (!deleteConfirm.value) return;
+            const id = deleteConfirm.value.user.id;
+            data.value = data.value.filter((u) => u.id !== id);
+            if (editedUser.value?.id === id) editedUser.value = null;
+            deleteConfirm.value = null;
+            showToast("✗ Запись удалена");
+          }
+
+          async function loadExcel(e) {
+            const file = e?.target?.files?.[0];
+            if (!file) return;
+            try {
+              const rows = await parseExcel(file);
+              data.value = rows.map((r) => ({ id: idCounter.value++, ...r }));
+              console.log("До установки true:", isExcelLoaded.value);
+              isExcelLoaded.value = true;
+              console.log("После установки true:", isExcelLoaded.value);
+              showToast(`✓ Загружено ${rows.length} записей`);
+            } catch (err) {
+              isExcelLoaded.value = false;
+              console.error(err);
+              alert("Ошибка чтения файла");
+            }
+            e.target.value = "";
+          }
+
+          function exportExcel() {
+            if (!data.value.length) return;
+            const rows = data.value.map((u) => {
+              const r = {};
+              FIELDS.forEach((f) => {
+                r[f] = u[f] ?? "";
+              });
+              return r;
+            });
+            const ws = XLSX.utils.json_to_sheet(rows, { header: FIELDS });
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Реестр");
+            XLSX.writeFile(wb, "it-registry-export.xlsx");
+            showToast("✓ Файл скачан");
+          }
+
+          function setSort(key) {
+            if (sortKey.value === key) sortDir.value *= -1;
+            else {
+              sortKey.value = key;
+              sortDir.value = 1;
+            }
+          }
+
+          document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+              if (editedUser.value) closeEdit();
+              else if (deleteConfirm.value) cancelDelete();
+            }
+          });
+
+          return {
+            isExcelLoaded,
+            data,
+            query,
+            filtered,
+            groups,
+            allDepts,
+            stats,
+            editedUser,
+            toast,
+            copiedIp,
+            deleteConfirm,
+            activeDept,
+            viewMode,
+            sortKey,
+            sortDir,
+            macDrop,
+            macFormats,
+            openMacDrop,
+            copyMacFmt,
+            TAB_GROUPS,
+            CHECKBOX_FIELDS,
+            SOFT_INDICATORS,
+            UNASSIGNED,
+            openEdit,
+            closeEdit,
+            addUser,
+            onDeleteFromDialog,
+            askDelete,
+            cancelDelete,
+            confirmDelete,
+            copyIP,
+            loadExcel,
+            exportExcel,
+            setSort,
+            isOn,
+          };
+        },
+        template: `
+  <div style="display:flex;flex-direction:column;min-height:100vh">
+
+    <!-- APPBAR -->
+    <header class="appbar">
+      <span class="appbar__logo">IT Реестр</span>
+      <span class="appbar__sep"></span>
+      <span class="appbar__count">{{ filtered.length }} / {{ data.length }}</span>
+    </header>
+
+    <!-- STATS -->
+    <div class="stats-bar" v-if="data.length">
+      <div class="stat">
+        <span class="stat__val">{{ stats.total }}</span>
+        <span class="stat__label">Записей</span>
+      </div>
+      <div class="stat">
+        <span class="stat__val">{{ stats.depts }}</span>
+        <span class="stat__label">Отделов</span>
+      </div>
+      <div class="stat">
+        <span class="stat__val" :class="{'stat__val--warn':stats.noIp>0}">{{ stats.noIp }}</span>
+        <span class="stat__label">Без IP</span>
+      </div>
+      <div class="stat">
+        <span class="stat__val" :class="{'stat__val--warn':stats.noMac>0}">{{ stats.noMac }}</span>
+        <span class="stat__label">Без MAC</span>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="toolbar__search">
+        <span class="toolbar__search-icon">⌕</span>
+        <input class="input" v-model="query" placeholder="Поиск по ФИО, логину, IP или MAC…" />
+      </div>
+      <input type="file" ref="fileInput" @change="loadExcel" accept=".xlsx,.xls" style="display:none" />
+      <button class="btn btn--outline" @click="$refs.fileInput.click()">↑ Excel</button>
+      <button class="btn btn--outline" @click="exportExcel" :disabled="!data.length"
+        style="color:var(--accent);border-color:rgba(240,192,96,0.3)">↓ Экспорт</button>
+      <button class="btn btn--primary" :disabled="!isExcelLoaded" @click="addUser">+ Добавить</button>
+    </div>
+
+    <!-- DEPT FILTERS -->
+    <div class="dept-filters" v-if="allDepts.length > 1">
+      <span class="dept-filters__label">Отдел</span>
+      <button class="dept-chip" :class="{'dept-chip--active':!activeDept}"
+        @click="activeDept=null" style="--dept-color:var(--green)">
+        <span class="dept-chip__dot"></span>Все
+      </button>
+      <button v-for="d in allDepts" :key="d.name"
+        class="dept-chip" :class="{'dept-chip--active':activeDept===d.name}"
+        :style="{'--dept-color':d.color}"
+        @click="activeDept = activeDept===d.name ? null : d.name">
+        <span class="dept-chip__dot"></span>{{ d.name }}
+      </button>
+    </div>
+
+    <!-- SORT + VIEW -->
+    <div class="sort-bar" v-if="data.length">
+      <span class="sort-bar__label">Сортировка</span>
+      <button v-for="k in ['ФИО пользователя','IP адрес','Департамент','Здание, кабинет']" :key="k"
+        class="sort-btn" :class="{'sort-btn--active':sortKey===k}" @click="setSort(k)">
+        {{ k }}{{ sortKey===k ? (sortDir===1?' ↑':' ↓') : '' }}
+      </button>
+      <span class="sort-bar__sep"></span>
+      <div class="view-btns">
+        <button class="view-btn" :class="{'view-btn--active':viewMode==='grid'}" title="Сетка" @click="viewMode='grid'">⊞</button>
+        <button class="view-btn" :class="{'view-btn--active':viewMode==='table'}" title="Таблица" @click="viewMode='table'">☰</button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- EMPTY -->
+      <div v-if="filtered.length===0" class="empty">
+        <div class="empty__icon">🗄️</div>
+        <div class="empty__title">{{ data.length ? 'Ничего не найдено' : 'Нет записей' }}</div>
+        <div class="empty__hint">{{ data.length ? 'Попробуйте изменить фильтры' : 'Загрузите Excel или нажмите «Добавить»' }}</div>
+      </div>
+
+      <!-- GRID -->
+      <template v-else-if="viewMode==='grid'">
+        <div v-for="g in groups" :key="g.dept" class="dept-group" :style="{'--dept-color':g.color}">
+          <div class="dept-group__header">
+            <span class="dept-group__dot"></span>
+            <span class="dept-group__name">{{ g.dept }}</span>
+            <span class="dept-group__count">{{ g.users.length }}</span>
+            <span class="dept-group__line"></span>
+          </div>
+          <div class="card-grid">
+            <article v-for="u in g.users" :key="u.id" class="user-card"
+              :style="{'--dept-color':g.color}" @click="openEdit(u)">
+              <div class="user-card__head">
+                <div class="avatar">{{ (u['ФИО пользователя']||'?')[0] }}</div>
+                <div style="flex:1;min-width:0">
+                  <div class="user-card__name">{{ u['ФИО пользователя']||'—' }}</div>
+                  <div class="user-card__login">{{ u['Логин пользователя']||'—' }}</div>
+                </div>
+                <button class="btn--icon" style="width:26px;height:26px;font-size:0.8rem;opacity:0.35;flex-shrink:0"
+                  @click.stop="askDelete($event,u)">🗑</button>
+              </div>
+              <div class="user-card__chips">
+                <span v-if="u['IP адрес']" class="chip chip--ip" :class="{copied:copiedIp===u['IP адрес']}"
+                  @click.stop="copyIP(u['IP адрес'])">
+                  <span class="chip__icon">{{ copiedIp===u['IP адрес']?'✓':'' }}</span>IP {{ u['IP адрес'] }}
+                </span>
+                <span v-if="u['MAC адрес']&&macFormats(u['MAC адрес'])" class="chip chip--mac"
+                  :class="{copied:macDrop&&macDrop.copiedKey&&macDrop.userId===u.id}"
+                  @click.stop="openMacDrop($event,u['MAC адрес'],u.id)">
+                  <span class="chip__icon">{{ macDrop&&macDrop.copiedKey&&macDrop.userId===u.id?'✓':'' }}</span>MAC ▾
+                </span>
+                <span v-if="u['Здание, кабинет']" class="chip chip--secondary">{{ u['Здание, кабинет'] }}</span>
+              </div>
+              <div class="user-card__soft" v-if="SOFT_INDICATORS.some(s=>isOn(u[s]))">
+                <span v-for="s in SOFT_INDICATORS" :key="s" v-if="isOn(u[s])" class="soft-pill">{{ s }}</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </template>
+
+      <!-- TABLE -->
+      <template v-else>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th @click="setSort('ФИО пользователя')" :class="sortKey==='ФИО пользователя'?(sortDir===1?'sort-asc':'sort-desc'):''">ФИО</th>
+                <th @click="setSort('Логин пользователя')" :class="sortKey==='Логин пользователя'?(sortDir===1?'sort-asc':'sort-desc'):''">Логин</th>
+                <th @click="setSort('Департамент')" :class="sortKey==='Департамент'?(sortDir===1?'sort-asc':'sort-desc'):''">Отдел</th>
+                <th @click="setSort('Здание, кабинет')" :class="sortKey==='Здание, кабинет'?(sortDir===1?'sort-asc':'sort-desc'):''">Кабинет</th>
+                <th @click="setSort('IP адрес')" :class="sortKey==='IP адрес'?(sortDir===1?'sort-asc':'sort-desc'):''">IP</th>
+                <th>MAC</th>
+                <th>ПО</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="u in filtered" :key="u.id" @click="openEdit(u)">
+                <td class="td-name">{{ u['ФИО пользователя']||'—' }}</td>
+                <td class="td-muted">{{ u['Логин пользователя']||'—' }}</td>
+                <td class="td-muted">{{ u['Департамент']||'—' }}</td>
+                <td class="td-muted">{{ u['Здание, кабинет']||'—' }}</td>
+                <td>
+                  <span v-if="u['IP адрес']" class="chip chip--ip" style="font-size:0.65rem"
+                    :class="{copied:copiedIp===u['IP адрес']}" @click.stop="copyIP(u['IP адрес'])">
+                    <span class="chip__icon">{{ copiedIp===u['IP адрес']?'✓':'' }}</span>{{ u['IP адрес'] }}
+                  </span>
+                  <span v-else class="td-muted">—</span>
+                </td>
+                <td>
+                  <span v-if="u['MAC адрес']&&macFormats(u['MAC адрес'])" class="chip chip--mac" style="font-size:0.65rem"
+                    :class="{copied:macDrop&&macDrop.copiedKey&&macDrop.userId===u.id}"
+                    @click.stop="openMacDrop($event,u['MAC адрес'],u.id)">
+                    <span class="chip__icon">{{ macDrop&&macDrop.copiedKey&&macDrop.userId===u.id?'✓':'' }}</span>MAC ▾
+                  </span>
+                  <span v-else class="td-muted">—</span>
+                </td>
+                <td>
+                  <div style="display:flex;gap:3px;flex-wrap:wrap">
+                    <span v-for="s in SOFT_INDICATORS" :key="s" v-if="isOn(u[s])" class="soft-pill">{{ s }}</span>
+                  </div>
+                </td>
+                <td style="text-align:right">
+                  <button class="btn--icon" style="width:26px;height:26px;font-size:0.75rem;opacity:0.35"
+                    @click.stop="askDelete($event,u)">🗑</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </main>
+
+    <!-- DIALOG -->
+    <EditDialog :user="editedUser" :tab-groups="TAB_GROUPS" :checkbox-fields="CHECKBOX_FIELDS"
+      @close="closeEdit" @delete="onDeleteFromDialog" />
+
+    <!-- DELETE CONFIRM -->
+    <div v-if="deleteConfirm" class="confirm-overlay" @click.self="cancelDelete">
+      <div class="confirm-box">
+        <div class="confirm-box__icon">🗑</div>
+        <div class="confirm-box__title">Удалить запись?</div>
+        <div class="confirm-box__text">
+          {{ deleteConfirm.user['ФИО пользователя']||'Без имени' }}<br>
+          <span style="opacity:0.6">Это действие нельзя отменить</span>
+        </div>
+        <div class="confirm-box__actions">
+          <button class="btn btn--ghost" @click="cancelDelete">Отмена</button>
+          <button class="btn btn--danger" @click="confirmDelete">Удалить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAC DROPDOWN -->
+    <div v-if="macDrop" class="mac-drop" :class="{'mac-drop--visible':macDrop.visible}"
+      :style="{top:macDrop.top+'px',left:macDrop.left+'px'}" @click.stop>
+      <div v-for="(key,i) in ['colon','hyphen','cisco']" :key="key"
+        class="mac-drop__row" :class="{'mac-drop__row--copied':macDrop.copiedKey===key}"
+        @click="copyMacFmt($event,key)">
+        <span class="mac-drop__label">{{ ['COLON','HYPHEN','CISCO'][i] }}</span>
+        <span class="mac-drop__val">{{ macDrop.formats[key] }}</span>
+        <span class="mac-drop__check">{{ macDrop.copiedKey===key?'✓':'' }}</span>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div v-if="toast" class="toast">{{ toast }}</div>
+  </div>
+  `,
+      };
+
+      createApp(App).mount("#app");
+    </script>
+  </body>
+</html>
