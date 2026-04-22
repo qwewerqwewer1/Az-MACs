@@ -220,6 +220,12 @@
       .btn--primary:hover {
         background: #55d49a;
       }
+
+      .btn--primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
       .btn--ghost {
         background: transparent;
         border-color: var(--border2);
@@ -1216,7 +1222,6 @@
       const App = {
         components: { EditDialog },
         setup() {
-          const isExcelLoaded = ref(false);
           const data = ref([]);
           const idCounter = ref(1);
           const query = ref("");
@@ -1451,12 +1456,8 @@
             try {
               const rows = await parseExcel(file);
               data.value = rows.map((r) => ({ id: idCounter.value++, ...r }));
-              console.log("До установки true:", isExcelLoaded.value);
-              isExcelLoaded.value = true;
-              console.log("После установки true:", isExcelLoaded.value);
               showToast(`✓ Загружено ${rows.length} записей`);
             } catch (err) {
-              isExcelLoaded.value = false;
               console.error(err);
               alert("Ошибка чтения файла");
             }
@@ -1495,7 +1496,6 @@
           });
 
           return {
-            isExcelLoaded,
             data,
             query,
             filtered,
@@ -1572,7 +1572,7 @@
       <button class="btn btn--outline" @click="$refs.fileInput.click()">↑ Excel</button>
       <button class="btn btn--outline" @click="exportExcel" :disabled="!data.length"
         style="color:var(--accent);border-color:rgba(240,192,96,0.3)">↓ Экспорт</button>
-      <button class="btn btn--primary" :disabled="!isExcelLoaded" @click="addUser">+ Добавить</button>
+      <button class="btn btn--primary" :disabled="!data.length" @click="addUser">+ Добавить</button>
     </div>
 
     <!-- DEPT FILTERS -->
